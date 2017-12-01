@@ -15,11 +15,13 @@ import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Scroller;
 
+import java.util.List;
+
 /**
  * Created by 龚志星 on 2017/11/30 at 12:27
  */
 
-public class MyRuleView extends View{
+public class MyRuleView extends View {
     public String TAG = "MyRuleView";
     private int childCountPerUnit = 10;
     private float unitWidth = 140f;
@@ -32,12 +34,18 @@ public class MyRuleView extends View{
     private float middleLineWidth = 4;
     private float childUnitLineWidth = 2;
 
-    private float marginLeft = 0;
     private GestureDetector mDetector;
     private Scroller mScroller;
 
+    private List<String> dataList;
+
     private ScrollStopListener scrollStopListener;
-    private int minUnitNum;
+    private int needFillUnitCountPerSize;
+    private boolean showMiddleLine = true;
+    private int pointIndex;
+    private boolean pointDefault = true;
+
+    private boolean isDraging = false;
 
 
     public MyRuleView(Context context) {
@@ -67,7 +75,7 @@ public class MyRuleView extends View{
         paint.setStyle(Paint.Style.FILL);
         DecelerateInterpolator decelerateInterpolator = new DecelerateInterpolator(0.7f);
         mScroller = new Scroller(getContext(), decelerateInterpolator);
-        mDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener(){
+        mDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {
                 mScroller.forceFinished(true);
@@ -76,36 +84,38 @@ public class MyRuleView extends View{
 
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
-                
+                Log.e("onSingleTab", "onS");
                 return super.onSingleTapUp(e);
             }
 
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                isDraging = false;
                 if (!mScroller.computeScrollOffset()) {
-                    mScroller.fling(getScrollX(), 0, -(int) (velocityX), 0, (int) (getMinUnit()/2*unitLineWidth), (int) (getMinUnit()/2*unitLineWidth), 0, 0);
+                    mScroller.fling(getScrollX(), 0, -(int) (velocityX), 0,
+                            (int) (getFillCount() * unitWidth),
+                            (int) ((dataList.size() + getFillCount() - 1) * unitWidth), 0, 0);
                 }
                 return true;
             }
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                scrollBy((int) distanceX, 0);
-                return super.onScroll(e1, e2, distanceX, distanceY);
+                isDraging = true;
+                float rightMax = (getFillCount() + dataList.size()) * unitWidth;
+                if (getScrollX() + distanceX < rightMax && getScrollX() + distanceX >= (getFillCount() - 1) * unitWidth) {
+                    scrollBy((int) distanceX, 0);
+                }
+                return true;
             }
-        });
 
+        });
     }
+
 
     public void setScrollStopListener(ScrollStopListener scrollStopListener) {
         this.scrollStopListener = scrollStopListener;
     }
-
-    public ScrollStopListener getScrollStopListener() {
-        return scrollStopListener;
-    }
-
-
 
 
     @Override
@@ -115,76 +125,115 @@ public class MyRuleView extends View{
     }
 
 
-    private int getMinUnit(){
-        if (minUnitNum ==0) {
-            float halfWidth = 0.5f*getWidth();
-            minUnitNum= 2*(int) Math.ceil(halfWidth / unitWidth);
+    /**
+     * 在左右两边填充空白单元以使最左/又的有效单元能够移动到指针位置
+     *
+     * @return 每边附加的空白单元个数
+     */
+    private int getFillCount() {
+        if (needFillUnitCountPerSize == 0) {
+            float halfWidth = 0.5f * getWidth();
+            needFillUnitCountPerSize = (int) Math.ceil(halfWidth / unitWidth);
+            pointIndex = dataList.size() / 2 + needFillUnitCountPerSize - 1;
         }
+        return needFillUnitCountPerSize;
+    }
 
-      return minUnitNum;
+    public List<String> getDataList() {
+        return dataList;
+    }
+
+    public void setDataList(List<String> dataList) {
+        this.dataList = dataList;
+        pointDefault = true;
+        invalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        int minUnitHalfSide = getMinUnit();
-        Log.e("minUnitHalfSize", minUnitHalfSide/2 + "");
-        canvas.translate(getWidth()/2,0);
-        paint.setStrokeWidth(childUnitLineWidth);
-        paint.setColor(Color.GREEN);
-        canvas.drawLine(getScrollX(), 0, getScrollX(), unitLineHeight + 40, paint);
-
-
-
-
-        for (int i = 0; i < minUnitNum/2; i++) {
+        if (dataList == null) {
+            return;
+        }
+        canvas.translate(getWidth() / 2, 0);
+        for (int i = 0; i < dataList.size() + 2 * getFillCount(); i++) {
             for (int j = 0; j < childCountPerUnit; j++) {
-                float startX;
-                if (j == 0) {
-                    paint.setStrokeWidth(unitLineWidth);
-                    paint.setColor(Color.BLACK);
-                    startX = marginLeft + i * unitWidth;
-                    canvas.drawLine(startX, 0, startX, unitLineHeight, paint);
-                    canvas.drawLine(-startX, 0, -startX, unitLineHeight, paint);
-                    canvas.drawText(String.valueOf(i), startX, unitLineHeight + 20, paint);
-                    //Log.e("drawLongLine", startX + "");
-                } else if (j == childCountPerUnit/2) {
+                float startX = (i + (j * 1f) / childCountPerUnit) * unitWidth;
+                if (willShowDrawMiddleLine() && j == childCountPerUnit / 2) {//middle line
                     paint.setColor(Color.BLACK);
                     paint.setStrokeWidth(middleLineWidth);
-                    startX = marginLeft + (i + (float) j / childCountPerUnit) * unitWidth;
                     canvas.drawLine(startX, 0, startX, middleLineHeight, paint);
-                    canvas.drawLine(-startX, 0, -startX, middleLineHeight, paint);
                     // Log.e("drawMiddleLine", startX + "");
+                } else if (j == 0) {//long line
+                    if (i != 0) {
+                        paint.setStrokeWidth(unitLineWidth);
+                        paint.setColor(Color.BLACK);
+                        canvas.drawLine(startX, 0, startX, unitLineHeight, paint);
+                    }
+                    paint.setColor(Color.BLACK);
+                    canvas.drawText((String.valueOf(i)), startX, unitLineHeight + 10, paint);
+                    if (getFillCount() - 1 < i && i < dataList.size() + getFillCount()) {
+                        canvas.drawText(dataList.get(i - getFillCount()), startX, unitLineHeight + 40, paint);
+                    }
                 } else {
                     paint.setColor(Color.BLACK);
                     paint.setStrokeWidth(childUnitLineWidth);
-                    startX = marginLeft + (i + (float) j / childCountPerUnit) * unitWidth;
                     canvas.drawLine(startX, 0, startX, childUnitLineHeight, paint);
-                    canvas.drawLine(-startX, 0, -startX, childUnitLineHeight, paint);
                     // Log.e("drawShortLine", startX + "");
                 }
             }
         }
+        //draw point line
+        paint.setStrokeWidth(childUnitLineWidth);
+        paint.setColor(Color.GREEN);
+        canvas.drawLine(getScrollX(), 0, getScrollX(), unitLineHeight + 40, paint);
 
+        if (pointDefault) {
+            pointIndex = getFillCount() + dataList.size() / 2;
+            scrollToIndex(pointIndex, true);
+            pointDefault = false;
+        }
 
-        // Log.e("drawShortLine", startX + "");
+        pointIndex = (int) (getScrollX() /unitWidth);
+
+        Log.e("index", pointIndex + ";scroll:"+getScrollX());
 
         super.onDraw(canvas);
     }
+
+    private void scrollToIndex(int destIndex, boolean immediately) {
+        if (immediately)
+            scrollTo((int) (destIndex * unitWidth), 0);
+        else {
+            int dx = (int) (destIndex * unitWidth - getScrollX());
+            mScroller.startScroll(getScrollX(), 0, dx, 0);
+            invalidate();
+        }
+    }
+
 
     @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
             scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
-            Log.e("computeScroll", "mScroller.getCurrX()="+mScroller.getCurrX());
-        }else{
-            if (scrollStopListener != null) {
-                scrollStopListener.onScrollStop(String.valueOf(getId()),5,"10");
+           // Log.e("computeScroll", "mScroller.getCurrX()=" + mScroller.getCurrX());
+        } else {
+            if (!isDraging&&scrollStopListener != null) {
+                scrollStopListener.onScrollStop(String.valueOf(getId()), 5, "10");
+                corret();
             }
         }
         super.computeScroll();
     }
 
-
+    private void corret() {
+        float v = (getWidth()%unitWidth)/unitWidth;
+        int index = (int) (getScrollX() / unitWidth);
+        if (v >= 0.5f) {
+            scrollToIndex(index+1,false);
+        }else{
+            scrollToIndex(index,false);
+        }
+    }
 
 
     @Override
@@ -192,11 +241,49 @@ public class MyRuleView extends View{
         return mDetector.onTouchEvent(event);
     }
 
+    /**
+     * 每个单元子单元个数为奇数时不显示中线,否则根据用户设置来决定是否显示中线
+     *
+     * @return
+     */
+    public boolean willShowDrawMiddleLine() {
+        return showMiddleLine && childCountPerUnit % 2 == 0;
+    }
 
+    public void setShowMiddleLine(boolean showMiddleLine) {
+        this.showMiddleLine = showMiddleLine;
+    }
 
+    /**
+     * @return 指针指向的数据所在list的位置
+     */
+    public int getPointPos() {
+        return pointIndex - getFillCount();
+    }
 
+    /**
+     * @param pointPos    要指向数据所在list的位置
+     * @param immediately 是否立刻
+     */
+    public void setPointPos(int pointPos, boolean immediately) {
+        if (pointPos >= 0 && pointPos < dataList.size()) {
+            this.pointIndex = getFillCount() + pointPos;
+            scrollToIndex(pointIndex, immediately);
+        } else {
+            Log.e(TAG, "setPointPos=" + pointPos + "error");
+        }
+    }
 
-    interface  ScrollStopListener{
-        void  onScrollStop(String rule,int pointPosition,String pointValue );
+    /**
+     * 立刻移动到指定位置
+     *
+     * @param pointPos
+     */
+    public void setPointPos(int pointPos) {
+        setPointPos(pointPos, true);
+    }
+
+    interface ScrollStopListener {
+        void onScrollStop(String rule, int pointPosition, String pointValue);
     }
 }
