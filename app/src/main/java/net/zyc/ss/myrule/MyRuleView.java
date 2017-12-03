@@ -12,7 +12,6 @@ import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Scroller;
 
@@ -83,9 +82,9 @@ public class MyRuleView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-       int width = measureWidth(widthMeasureSpec);
-         int height = measureHeight(heightMeasureSpec);
-        setMeasuredDimension(width,height);
+        int width = measureWidth(widthMeasureSpec);
+        int height = measureHeight(heightMeasureSpec);
+        setMeasuredDimension(width, height);
         Log.e(TAG, "measuredWidth" + getMeasuredWidth());
     }
 
@@ -161,9 +160,11 @@ public class MyRuleView extends View {
     }
 
 
-    private void corret() {
-        float v = (getWidth() % unitWidth) / unitWidth;
+    private void autoCorrect() {
+        action = ACTION_SET_OR_CORRECT;
+        float v = (getScrollX() % unitWidth) / unitWidth;
         int index = (int) (getScrollX() / unitWidth);
+        Log.e(TAG, "autoCorrect: v" + v);
         if (v >= 0.5f) {
             scrollToIndex(index + 1, false);
         } else {
@@ -194,7 +195,7 @@ public class MyRuleView extends View {
                         canvas.drawLine(startX, 0, startX, unitLineHeight, paint);
                     }
                     paint.setColor(Color.BLACK);
-                   // canvas.drawText((String.valueOf(i)), startX, unitLineHeight + 10, paint);
+                    // canvas.drawText((String.valueOf(i)), startX, unitLineHeight + 10, paint);
                     if (getFillCount() - 1 < i && i < dataList.size() + getFillCount()) {
                         canvas.drawText(dataList.get(i - getFillCount()), startX, unitLineHeight + 40, paint);
                     }
@@ -232,7 +233,7 @@ public class MyRuleView extends View {
         mDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {
-                mScroller.forceFinished(true);
+               // mScroller.forceFinished(true);
                 return true;
             }
 
@@ -247,9 +248,13 @@ public class MyRuleView extends View {
                 Log.e(TAG, "onFling" + velocityX);
                 action = ACTION_FILING;
                 if (!mScroller.computeScrollOffset()) {
+                    Log.e(TAG, "mScroller filing ");
                     mScroller.fling(getScrollX(), 0, -(int) (velocityX), 0,
                             0,
                             (int) ((dataList.size() + 2 * getFillCount()) * unitWidth), -10000, 10000);
+                    invalidate();
+                } else {
+                    autoCorrect();
                 }
                 return true;
             }
@@ -272,23 +277,30 @@ public class MyRuleView extends View {
     @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
-            scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
-            // Log.e("computeScroll", "mScroller.getCurrX()=" + mScroller.getCurrX());
-        } else {
+            if (getScrollX() != mScroller.getCurrX() || getScrollY() != mScroller.getCurrY()) {
+                scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            } else {
+                Log.e(TAG, "scroll not execute");
+                mScroller.forceFinished(true);
+                invalidate();
+            }
 
+            Log.e("computeScroll", "mScroller.getCurrX()=" + mScroller.getCurrX());
+        } else {
+            Log.e(TAG, "computeScroll: switchAction" + action);
             switch (action) {
                 case ACTION_FILING:
-                    onStopScroll();
-                    action = ACTION_IDLE;
+                    autoCorrect();
                     break;
                 case ACTION_IDLE:
                     break;
                 case ACTION_DRAG:
                     break;
+                case ACTION_SET_OR_CORRECT:
+                    break;
 
 
             }
-            //  corret();
         }
         super.computeScroll();
     }
@@ -298,19 +310,21 @@ public class MyRuleView extends View {
             if (pointIndex >= getFillCount() && pointIndex < dataList.size() + getFillCount()) {
                 scrollStopListener.onScrollStop(String.valueOf(getId()), pointIndex - getFillCount(), dataList.get(pointIndex - getFillCount()));
             }
-            Log.e(TAG, "onStopScroll: pointIndex"+pointIndex );
+            Log.e(TAG, "onStopScroll: pointIndex" + pointIndex);
         }
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        boolean b = mDetector.onTouchEvent(event);//手势必须在onTouchEvent前面判断,这样才能区分是
+        // on scroll-> on filing->action up 还是on scroll->action up
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
                 Log.e(TAG, "ACTION_DOWN");
                 break;
             case MotionEvent.ACTION_UP:
                 if (action == ACTION_DRAG) {
-                    onStopScroll();
+                    autoCorrect();
                 }
                 Log.e(TAG, "ACTION_UP");
                 break;
@@ -319,8 +333,7 @@ public class MyRuleView extends View {
                 break;
 
         }
-        boolean b = mDetector.onTouchEvent(event);//手势必须在onTouchEvent前面判断,这样才能区分是
-        // on scroll-> on filing->action up 还是on scroll->action up
+
         return b;//super.onTouchEvent(event);
     }
 
