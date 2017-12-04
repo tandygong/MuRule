@@ -33,7 +33,38 @@ public class MyRuleView extends View {
     private float unitLineWidth = 6;
     private float middleLineWidth = 4;
     private float childUnitLineWidth = 2;
+    /**
+     * 选中模式禁用-普通模式
+     */
+    public final static int MODE_DEFAULT_SELECTION_DISABLED = -1;
+    /**
+     * 选中模式开启-选中状态
+     */
+    public final static int MODE_SELECTED = 0;
+    /**
+     * 选中模式开启-未选中状态
+     */
+    public final static int MODE_UNSELECTED = 1;
+    /**
+     * 控件禁用模式-不可滑动
+     */
+    public final static int MODE_FORBID_USE = 2;
 
+    private int mode = MODE_DEFAULT_SELECTION_DISABLED;
+
+
+    /**
+     * 拖拽尺子时,指针能够指向超过有效刻度的最大单元个数
+     */
+    private int overDragUnitCount = 3;
+    /**
+     * filing尺子时,指针能够指向指向超过有效刻度的最大单元个数
+     */
+    private int overFlingUnitCount = 4;
+    /**
+     * 开启自动校正
+     */
+    private boolean autoCorrect = true;
     private GestureDetector mDetector;
     private Scroller mScroller;
 
@@ -41,6 +72,9 @@ public class MyRuleView extends View {
 
     private ScrollStopListener scrollStopListener;
     private int needFillUnitCountPerSize;
+    /**
+     * 是否突出显示中线
+     */
     private boolean showMiddleLine = true;
     private int pointIndex;
     private boolean pointDefault = true;
@@ -50,6 +84,18 @@ public class MyRuleView extends View {
     private static final int ACTION_FILING = 2;
     private static final int ACTION_SET_OR_CORRECT = 3;
     private int action = ACTION_IDLE;
+    /**
+     * 向下取整:指针指向3.0-3.9则认为指针指向3
+     */
+    public final static int CORRECT_TYPE_FLOOR = 1;
+    /**
+     * 四舍五入:指针指向2.5-3.4 认为是3,指针指向3.5-4.4认为是4
+     */
+    public final static int CORRECT_TYPE_ROUND = 0;
+    /**
+     * 默认采用向下取整
+     */
+    private int autoCorrectType = CORRECT_TYPE_FLOOR;
 
 
     public MyRuleView(Context context) {
@@ -73,11 +119,84 @@ public class MyRuleView extends View {
         init();
     }
 
+    public void setMode(int mode) {
+        if (this.mode != mode) {
+            this.mode = mode;
+            //applyNewMode(mode);
+        }
+    }
+
+    /*private void applyNewMode(int mode) {
+        switch (mode) {
+            case MODE_DEFAULT_SELECTION_DISABLED:
+                //pointer.setTextColor(Color.BLUE);
+                ruleNameText.setTextColor(Color.WHITE);
+                pointerValueText.setTextColor(Color.WHITE);
+                setAlpha(1.0f);
+                break;
+            case MODE_SELECTED:
+                //pointer.setTextColor(Color.BLUE);
+                ruleNameText.setTextColor(Color.parseColor("#01ade5"));
+                pointerValueText.setTextColor(Color.parseColor("#01ade5"));
+                setAlpha(1.0f);
+                setBackgroundColor(mSelectedColor);
+                break;
+            case MODE_UNSELECTED:
+                //pointer.setTextColor(Color.WHITE);
+                ruleNameText.setTextColor(Color.WHITE);
+                pointerValueText.setTextColor(Color.WHITE);
+                setBackground(defaultColor);
+                setAlpha(1.0f);
+                break;
+            case MODE_FORBID_USE:
+                // pointer.setTextColor(Color.WHITE);
+                pointerValueText.setTextColor(Color.WHITE);
+                ruleNameText.setTextColor(Color.WHITE);
+                setAlpha(0.3f);
+                break;
+        }
+    }*/
+
 
     public void setScrollStopListener(ScrollStopListener scrollStopListener) {
         this.scrollStopListener = scrollStopListener;
     }
 
+    public void setOverDragUnitCount(int overDragUnitCount) {
+        this.overDragUnitCount = overDragUnitCount;
+    }
+
+    public List<String> getDataList() {
+        return dataList;
+    }
+
+    public void setDataList(List<String> dataList) {
+        this.dataList = dataList;
+        pointDefault = true;
+        invalidate();
+    }
+
+
+    public boolean isAutoCorrect() {
+        return autoCorrect;
+    }
+
+    /**
+     * 设置自动校正是否开启
+     *
+     * @param autoCorrect 开启时,会自动指向整数位
+     */
+    public void setAutoCorrect(boolean autoCorrect) {
+        this.autoCorrect = autoCorrect;
+    }
+
+    public void setAutoCorrectType(int autoCorrectType) {
+        this.autoCorrectType = autoCorrectType;
+    }
+
+    public int getAutoCorrectType() {
+        return autoCorrectType;
+    }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -126,28 +245,19 @@ public class MyRuleView extends View {
 
 
     /**
-     * 在左右两边填充空白单元以使最左/又的有效单元能够移动到指针位置
+     * 在左右两边填充空白单元以使最左/右的有效刻度单元能够移动到指针位置
      *
      * @return 每边附加的空白单元个数
      */
     private int getFillCount() {
         if (needFillUnitCountPerSize == 0) {
             float halfWidth = 0.5f * getWidth();
-            needFillUnitCountPerSize = (int) Math.ceil(halfWidth / unitWidth);
+            needFillUnitCountPerSize = (int) Math.ceil(halfWidth / unitWidth) + overDragUnitCount;
             pointIndex = dataList.size() / 2 + needFillUnitCountPerSize - 1;
         }
         return needFillUnitCountPerSize;
     }
 
-    public List<String> getDataList() {
-        return dataList;
-    }
-
-    public void setDataList(List<String> dataList) {
-        this.dataList = dataList;
-        pointDefault = true;
-        invalidate();
-    }
 
     private void scrollToIndex(int destIndex, boolean immediately) {
         if (immediately)
@@ -156,7 +266,9 @@ public class MyRuleView extends View {
             int dx = (int) (destIndex * unitWidth - getScrollX());
             mScroller.startScroll(getScrollX(), 0, dx, 0);
             invalidate();
+            Log.e(TAG, "scrollToIndex: destIndex" + destIndex + " destX " + destIndex * unitWidth);
         }
+
     }
 
 
@@ -164,21 +276,27 @@ public class MyRuleView extends View {
         action = ACTION_SET_OR_CORRECT;
         float v = (getScrollX() % unitWidth) / unitWidth;
         int index = (int) (getScrollX() / unitWidth);
-        Log.e(TAG, "autoCorrect: v" + v);
-        if (v >= 0.5f) {
-            scrollToIndex(index + 1, false);
+        Log.e(TAG, "autoCorrect: v" + v + " index:" + index);
+        if (index < getFillCount()) {
+            scrollToIndex(getFillCount(), false);
+        } else if (index >= getFillCount() + dataList.size() - 1) {
+            scrollToIndex(getFillCount() + dataList.size() - 1, false);
         } else {
-            scrollToIndex(index, false);
+            if (autoCorrect) {
+                scrollToIndex(autoCorrectType == CORRECT_TYPE_ROUND && v >= 0.5f ? index + 1 : index, false);
+            } else {
+                onStopScroll(autoCorrectType == CORRECT_TYPE_ROUND && v >= 0.5f ? index + 1 : index);
+            }
         }
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         Log.d(TAG, "onDraw");
-        if (dataList == null) {
+        if (dataList == null || dataList.size() == 0) {
             return;
         }
-        paint.setTextSize(40);
+
         canvas.translate(getWidth() / 2, 0);
         for (int i = 0; i < dataList.size() + 2 * getFillCount(); i++) {
             for (int j = 0; j < childCountPerUnit; j++) {
@@ -189,15 +307,20 @@ public class MyRuleView extends View {
                     canvas.drawLine(startX, 0, startX, middleLineHeight, paint);
                     // Log.e("drawMiddleLine", startX + "");
                 } else if (j == 0) {//long line
-                    if (i != 0) {
-                        paint.setStrokeWidth(unitLineWidth);
-                        paint.setColor(Color.BLACK);
-                        canvas.drawLine(startX, 0, startX, unitLineHeight, paint);
-                    }
+                    paint.setStrokeWidth(unitLineWidth);
                     paint.setColor(Color.BLACK);
-                    // canvas.drawText((String.valueOf(i)), startX, unitLineHeight + 10, paint);
+                    canvas.drawLine(startX, 0, startX, unitLineHeight, paint);
+
+                    paint.setColor(Color.BLACK);
+                    paint.setTextAlign(Paint.Align.CENTER);
+                    paint.setTextSize(24);
+                    canvas.drawText((String.valueOf(i)), startX, unitLineHeight + 20, paint);
+                    paint.setTextSize(40);
                     if (getFillCount() - 1 < i && i < dataList.size() + getFillCount()) {
-                        canvas.drawText(dataList.get(i - getFillCount()), startX, unitLineHeight + 40, paint);
+                        canvas.drawText(dataList.get(i - getFillCount()), startX, unitLineHeight + 60, paint);
+                    }
+                    if (i == dataList.size() + 2 * getFillCount() - 1) {
+                        break;
                     }
                 } else {
                     paint.setColor(Color.BLACK);
@@ -219,12 +342,13 @@ public class MyRuleView extends View {
         }
 
         pointIndex = (int) (getScrollX() / unitWidth);
-
         Log.d("index", pointIndex + ";scroll:" + getScrollX());
         super.onDraw(canvas);
     }
 
     private void init() {
+        setAutoCorrect(true);
+        setAutoCorrectType(CORRECT_TYPE_FLOOR);
         paint = new Paint();
         paint.setAntiAlias(true);
         paint.setStyle(Paint.Style.FILL);
@@ -233,13 +357,15 @@ public class MyRuleView extends View {
         mDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {
-               // mScroller.forceFinished(true);
+                Log.e(TAG, "onDown");
+                if (action != ACTION_SET_OR_CORRECT) {
+                    mScroller.forceFinished(true);
+                }
                 return true;
             }
 
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
-                Log.e("onSingleTab", "onS");
                 return super.onSingleTapUp(e);
             }
 
@@ -251,10 +377,11 @@ public class MyRuleView extends View {
                     Log.e(TAG, "mScroller filing ");
                     mScroller.fling(getScrollX(), 0, -(int) (velocityX), 0,
                             0,
-                            (int) ((dataList.size() + 2 * getFillCount()) * unitWidth), -10000, 10000);
+                            (int) ((dataList.size() + 2 * getFillCount() - 1) * unitWidth), -10000, 10000);
                     invalidate();
                 } else {
-                    autoCorrect();
+                    Log.e(TAG, "onFling: computeScrollOffset and autoCorrect");
+                    autoCorrect();//onFling完成了滑动过程
                 }
                 return true;
             }
@@ -262,9 +389,17 @@ public class MyRuleView extends View {
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
                 action = ACTION_DRAG;
-                Log.e(TAG, "onScroll");
-                float rightMax = (2 * getFillCount() + dataList.size()) * unitWidth;
-                if (getScrollX() + distanceX < rightMax && getScrollX() + distanceX >= 0) {
+                float rightMax = (getFillCount() + dataList.size() - 1) * unitWidth;
+                float leftMin = getFillCount() * unitWidth;
+                if (getScrollX() + distanceX > rightMax) {
+                    float f = (getScrollX() - rightMax) * 1f / overDragUnitCount / unitWidth;
+                    Log.e(TAG, "onScroll: f_right=" + f);
+                    scrollBy((int) ((1 - f * f) * (distanceX)), 0);
+                } else if (getScrollX() + distanceX < leftMin) {
+                    float f = (getScrollX() - leftMin) * 1f / overDragUnitCount / unitWidth;
+                    Log.e(TAG, "onScroll: f_left=" + f);
+                    scrollBy((int) ((1 - f * f) * (distanceX)), 0);
+                } else {
                     scrollBy((int) distanceX, 0);
                 }
                 return true;
@@ -276,16 +411,18 @@ public class MyRuleView extends View {
 
     @Override
     public void computeScroll() {
+
         if (mScroller.computeScrollOffset()) {
-            if (getScrollX() != mScroller.getCurrX() || getScrollY() != mScroller.getCurrY()) {
-                scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
-            } else {
+            Log.e("computeScroll", "mScroller.getCurrX()=" + mScroller.getCurrX() + "getScrollX()" + getScrollX());
+            if (getScrollX() == mScroller.getCurrX() && getScrollY() == mScroller.getCurrY()) {
                 Log.e(TAG, "scroll not execute");
-                mScroller.forceFinished(true);
+                // mScroller.forceFinished(true);
+                scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
                 invalidate();
+            } else {
+                scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
             }
 
-            Log.e("computeScroll", "mScroller.getCurrX()=" + mScroller.getCurrX());
         } else {
             Log.e(TAG, "computeScroll: switchAction" + action);
             switch (action) {
@@ -297,15 +434,20 @@ public class MyRuleView extends View {
                 case ACTION_DRAG:
                     break;
                 case ACTION_SET_OR_CORRECT:
+                    float v = (getScrollX() % unitWidth) / unitWidth;
+                    int index = (int) (getScrollX() / unitWidth);
+                    onStopScroll(autoCorrectType == CORRECT_TYPE_ROUND && v >= 0.5f ? index + 1 : index);
                     break;
 
 
             }
         }
-        super.computeScroll();
+        super.
+
+                computeScroll();
     }
 
-    private void onStopScroll() {
+    private void onStopScroll(int pointIndex) {
         if (scrollStopListener != null) {
             if (pointIndex >= getFillCount() && pointIndex < dataList.size() + getFillCount()) {
                 scrollStopListener.onScrollStop(String.valueOf(getId()), pointIndex - getFillCount(), dataList.get(pointIndex - getFillCount()));
@@ -338,14 +480,19 @@ public class MyRuleView extends View {
     }
 
     /**
-     * 每个单元子单元个数为奇数时不显示中线,否则根据用户设置来决定是否显示中线
+     * {@link #childCountPerUnit}值为奇数时不突出显示中线,否则根据用户设置的值{@link #showMiddleLine}来决定是否显示中线
      *
-     * @return
+     * @return 是否会突出显示中线
      */
     public boolean willDrawMiddleLine() {
         return showMiddleLine && childCountPerUnit % 2 == 0;
     }
 
+    /**
+     * 设置是否突出显示中线,如果设置为true,在{@link #childCountPerUnit}为值双数的时候将会突出显示,否则不会突出显示
+     *
+     * @param showMiddleLine 是否显示
+     */
     public void setShowMiddleLine(boolean showMiddleLine) {
         this.showMiddleLine = showMiddleLine;
     }
@@ -374,13 +521,22 @@ public class MyRuleView extends View {
     /**
      * 立刻移动到指定位置
      *
-     * @param pointPos
+     * @param pointPos 要指向数据所在list的位置
      */
     public void setPointPos(int pointPos) {
         setPointPos(pointPos, true);
     }
 
+
+    /**
+     * 手指离开view,且view 停止滑动的监听
+     */
     interface ScrollStopListener {
+        /**
+         * @param rule          rule 的名字或者id
+         * @param pointPosition 指针指向的数据所在list的位置
+         * @param pointValue    指针指向的值
+         */
         void onScrollStop(String rule, int pointPosition, String pointValue);
     }
 }

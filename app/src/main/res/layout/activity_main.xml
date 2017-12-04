@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:orientation="vertical"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context="net.zyc.ss.myrule.MainActivity">
 
-    <net.zyc.ss.myrule.MyRuleView
-        android:id="@+id/myRuleView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="10dp"
-        android:background="#300000ff" />
+        android:orientation="vertical">
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:onClick="pointTo"
-        android:text="pointTo" />
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
 
-</LinearLayout>
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView1"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView2"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView3"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView4"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView5"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView6"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView7"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView8"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView9"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <net.zyc.ss.myrule.MyRuleView
+            android:id="@+id/myRuleView10"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_margin="10dp"
+            android:background="#300000ff" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="pointTo"
+            android:text="pointTo" />
+
+    </LinearLayout>
+
+
+</ScrollView>
