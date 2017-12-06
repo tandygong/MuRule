@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="MyRuleView">
+        <attr name="ruleName" format="string" />
+        <attr name="pointColor" format="color" />
+        <attr name="tickColor" format="color" />
+        <attr name="textColor" format="color" />
+        <attr name="ruleNamePaddingLeft" format="dimension" />
+    </declare-styleable>
+</resources>

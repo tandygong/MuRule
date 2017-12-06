@@ -16,9 +16,9 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_margin="10dp"
-            android:background="#300000ff" />
+            android:background="#50000000" />
 
-        <net.zyc.ss.myrule.MyRuleView
+       <!-- <net.zyc.ss.myrule.MyRuleView
             android:id="@+id/myRuleView1"
             android:layout_width="match_parent"
             android:layout_height="50dp"
@@ -87,7 +87,7 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_margin="10dp"
-            android:background="#300000ff" />
+            android:background="#300000ff" />-->
 
         <Button
             android:layout_width="wrap_content"
